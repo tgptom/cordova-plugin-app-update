@@ -4,13 +4,13 @@
     <string name="update_title">App Update</string>
     <string name="update_message">App update is available</string>
     <string name="update_update_btn">Update</string>
-    <string name="updating">Updating</string>
+    <string name="updating">Downloading Update</string>
     <string name="update_cancel">Cancel</string>
-    <string name="update_bg">Background Update</string>
+    <string name="update_bg">Background Download</string>
     <string name="download_complete">Download completed</string>
     <string name="download_complete_title">Download completed</string>
-    <string name="download_complete_pos_btn">Download again</string>
-    <string name="download_complete_neu_btn">Install manually</string>
+    <string name="download_complete_pos_btn">Re-Download</string>
+    <string name="download_complete_neu_btn">Install</string>
 
     <string name="update_error_title">Error</string>
     <string name="update_error_message">Server cannot be reached, please try again later.</string>
