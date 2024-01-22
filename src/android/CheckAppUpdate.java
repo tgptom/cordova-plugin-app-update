@@ -56,12 +56,16 @@ public class CheckAppUpdate extends CordovaPlugin {
     private static final int INSTALL_PERMISSION_REQUEST_CODE = 0;
     private static final int UNKNOWN_SOURCES_PERMISSION_REQUEST_CODE = 1;
     private static final int OTHER_PERMISSIONS_REQUEST_CODE = 2;
+    private static final int OTHER_PERMISSIONS_T_REQUEST_CODE = 3;
 
     // Other necessary permissions for this plugin.
     private static String[] OTHER_PERMISSIONS = {
             Manifest.permission.INTERNET,
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE
+    };
+    private static String[] OTHER_PERMISSIONS_T = {
+            Manifest.permission.INTERNET
     };
 
     // Prompt user for install permission if we don't already have it.
@@ -96,14 +100,23 @@ public class CheckAppUpdate extends CordovaPlugin {
     // Prompt user for all other permissions if we don't already have them all.
     public boolean verifyOtherPermissions() {
         boolean hasOtherPermissions = true;
-        for (String permission:OTHER_PERMISSIONS)
-            hasOtherPermissions = hasOtherPermissions && cordova.hasPermission(permission);
-
-        if (!hasOtherPermissions) {
-            cordova.requestPermissions(this, OTHER_PERMISSIONS_REQUEST_CODE, OTHER_PERMISSIONS);
-            return false;
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            for (String permission:OTHER_PERMISSIONS_T){
+                hasOtherPermissions = hasOtherPermissions && cordova.hasPermission(permission);
+            }
+            if (!hasOtherPermissions) {
+                cordova.requestPermissions(this, OTHER_PERMISSIONS_T_REQUEST_CODE, OTHER_PERMISSIONS_T);
+                return false;
+            }
+        }else{
+            for (String permission:OTHER_PERMISSIONS){
+                hasOtherPermissions = hasOtherPermissions && cordova.hasPermission(permission);
+            }
+            if (!hasOtherPermissions) {
+                cordova.requestPermissions(this, OTHER_PERMISSIONS_REQUEST_CODE, OTHER_PERMISSIONS);
+                return false;
+            }
         }
-
         return true;
     }
 
@@ -136,7 +149,7 @@ public class CheckAppUpdate extends CordovaPlugin {
     // React to user's response to our request for other permissions.
     @Override
     public void onRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) {
-        if (requestCode == OTHER_PERMISSIONS_REQUEST_CODE) {
+        if (requestCode == OTHER_PERMISSIONS_REQUEST_CODE || requestCode == OTHER_PERMISSIONS_T_REQUEST_CODE) {
             for (int i = 0; i < permissions.length; i++) {
                 if (grantResults[i] == PackageManager.PERMISSION_DENIED) {
                     getUpdateManager().permissionDenied("Permission Denied: " + permissions[i]);

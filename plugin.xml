@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
-    id="cordova-plugin-app-update" version="2.0.2">
+    id="cordova-plugin-app-update" version="2.0.3">
     <name>AppUpdate</name>
     <description>Cordova App Update</description>
     <license>Apache 2.0</license>
@@ -19,10 +19,10 @@
 
         <config-file target="AndroidManifest.xml" parent="/*">
             <uses-permission android:name="android.permission.INTERNET" />
-            <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-            <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+            <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+            <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
             <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-            <uses-permission android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS"/>
+            <!--<uses-permission android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS" />-->
         </config-file>
 
         <config-file target="AndroidManifest.xml" parent="/manifest/application">
@@ -67,7 +67,9 @@
         <source-file src="res/values-ko/appupdate_strings.xml" target-dir="res/values-ko"/>
         <source-file src="res/layout/appupdate_progress.xml" target-dir="res/layout"/>
         <source-file src="res/xml/appupdate_paths.xml" target-dir="res/xml" />
-        
-        <framework src="com.android.support:support-v4:24.1.1+" />
+   
+        <preference name="ANDROIDX_CORE_VERSION" default="1.6.+"/>     
+        <!--<framework src="com.android.support:support-v4:24.1.1+" />-->
+        <framework src="androidx.core:core:$ANDROIDX_CORE_VERSION" />
     </platform>
 </plugin>

@@ -1,6 +1,6 @@
 {
   "name": "cordova-plugin-app-update",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Cordova App Update",
   "cordova": {
     "id": "cordova-plugin-app-update",
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vaenow/cordova-plugin-app-update.git"
+    "url": "git+https://github.com/tgptom/cordova-plugin-app-update.git"
   },
   "keywords": [
     "cordova",
@@ -25,13 +25,13 @@
   "author": "vaenow",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/vaenow/cordova-plugin-app-update/issues"
+    "url": "https://github.com/tgptom/cordova-plugin-app-update/issues"
   },
   "scripts": {
     "test": "npm run jshint",
     "jshint": "node node_modules/jshint/bin/jshint www && node node_modules/jshint/bin/jshint src && node node_modules/jshint/bin/jshint tests"
   },
-  "homepage": "https://github.com/vaenow/cordova-plugin-app-update#readme",
+  "homepage": "https://github.com/tgptom/cordova-plugin-app-update#readme",
   "devDependencies": {
     "jshint": "^2.6.0"
   }
