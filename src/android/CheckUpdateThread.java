@@ -23,7 +23,7 @@ import java.util.List;
 public class CheckUpdateThread implements Runnable {
     private static final int CONNECT_TIMEOUT_MS = 10000;
     private static final int READ_TIMEOUT_MS = 30000;
-    private String TAG = "CheckUpdateThread";
+    private static final String TAG = "CheckUpdateThread";
 
     /* Parsed XML data */
     HashMap<String, String> mHashMap;

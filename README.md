@@ -92,6 +92,7 @@ versionName | versionCode
      */
     int REMOTE_FILE_NOT_FOUND = 404;
     int NETWORK_ERROR = 405;
+    int OPERATION_IN_PROGRESS = 409;
 
     /**
      * No such method

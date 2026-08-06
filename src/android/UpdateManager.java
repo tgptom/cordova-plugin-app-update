@@ -64,7 +64,7 @@ public class UpdateManager {
     public boolean options(JSONArray args, CallbackContext callbackContext)
             throws JSONException {
         if (!operationInProgress.compareAndSet(false, true)) {
-            callbackContext.error(Utils.makeJSON(Constants.VERSION_UPDATING, "an update operation is already in progress"));
+            callbackContext.error(Utils.makeJSON(Constants.OPERATION_IN_PROGRESS, "an update operation is already in progress"));
             return false;
         }
         try {
@@ -140,7 +140,7 @@ public class UpdateManager {
     public boolean checkUpdate() {
         if (!isChecking.compareAndSet(false, true)) {
             operationInProgress.set(false);
-            callbackContext.error(Utils.makeJSON(Constants.VERSION_UPDATING, "an update check is already in progress"));
+            callbackContext.error(Utils.makeJSON(Constants.OPERATION_IN_PROGRESS, "an update check is already in progress"));
             return false;
         }
         LOG.d(TAG, "checkUpdate..");
