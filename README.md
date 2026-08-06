@@ -69,6 +69,7 @@ versionName | versionCode
 ### Compatibility notes
 
 - Recommended for modern Cordova Android projects (`cordova-android` 14.x/15.x).
+- HTTPS is recommended for update metadata and APK URLs, but HTTP URLs are also supported when permitted by the app's Android network security configuration.
 - APK files are downloaded into app-specific external storage.
 
 ### `checkAppUpdate` code

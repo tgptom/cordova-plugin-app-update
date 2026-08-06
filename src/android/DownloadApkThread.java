@@ -84,9 +84,6 @@ public class DownloadApkThread implements Runnable {
             }
 
             int status = conn.getResponseCode();
-            if (!"https".equalsIgnoreCase(conn.getURL().getProtocol())) {
-                throw new IOException("APK redirect URL must use HTTPS");
-            }
             if (status < HttpURLConnection.HTTP_OK || status >= HttpURLConnection.HTTP_MULT_CHOICE) {
                 throw new IOException("Unexpected HTTP status " + status);
             }
