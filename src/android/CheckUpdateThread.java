@@ -152,9 +152,8 @@ public class CheckUpdateThread implements Runnable {
             throw new IllegalArgumentException("Version code must be positive");
         }
 
-        URL apkUrl;
         try {
-            apkUrl = new URL(updateData.get("url"));
+            new URL(updateData.get("url"));
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException("Invalid APK URL", e);
         }
