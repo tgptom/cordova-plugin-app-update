@@ -1,28 +1,8 @@
 
-
-![travis](https://travis-ci.org/vaenow/cordova-plugin-app-update.svg?branch=master)  
-
 [![NPM](https://nodei.co/npm/cordova-plugin-app-update.png?downloads=true&downloadRank=true)](https://nodei.co/npm/cordova-plugin-app-update/)
 
 # cordova-plugin-app-update
 App updater for Cordova/PhoneGap
-
-# Demo 
-Try it yourself:
-
-Just clone and install this demo.
-[cordova-plugin-app-update-DEMO](https://github.com/vaenow/cordova-plugin-app-update-demo)
-:tada:
-
- * 如果喜欢它，请别忘了给我一颗鼓励的星
- * Support me a `Star` if it is necessary.  :+1:
- 
-# Preview
-![enter image description here](https://raw.githubusercontent.com/vaenow/cordova-plugin-app-update/master/res/img/Screenshot_2015-10-31-13-42-13.jpg)
-
-# 
-
-![enter image description here](https://raw.githubusercontent.com/vaenow/cordova-plugin-app-update/master/res/img/Screenshot_2015-10-31-13-42-19.jpg)
 
 # Install
 
@@ -47,7 +27,7 @@ var updateUrl = "http://192.168.0.1/version.xml";
 appUpdate.checkAppUpdate(onSuccess, onFail, updateUrl);
 ```
 
-- Auth download  [MORE](https://github.com/vaenow/cordova-plugin-app-update/pull/62)
+- Auth download
 ```js
 appUpdate.checkAppUpdate(onSuccess, onFail, updateUrl, {
     'authType' : 'basic',

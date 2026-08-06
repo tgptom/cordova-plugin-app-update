@@ -3,7 +3,7 @@
     id="cordova-plugin-app-update" version="2.0.3">
     <name>AppUpdate</name>
     <description>Cordova App Update</description>
-    <license>Apache 2.0</license>
+    <license>MIT</license>
     <keywords>cordova,update,app,auto,updater</keywords>
     <dependency id="cordova-plugin-appversion" version="1.0.0" />
     <js-module src="www/AppUpdate.js" name="AppUpdate">
