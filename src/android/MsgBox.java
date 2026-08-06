@@ -33,31 +33,31 @@ public class MsgBox {
     }
 
     /**
-     * 显示软件更新对话框
+     * Show the application update dialog
      *
      * @param onClickListener
      */
     public Dialog showNoticeDialog(OnClickListener onClickListener) {
         if (noticeDialog == null) {
             LOG.d(TAG, "showNoticeDialog");
-            // 构造对话框
+            // Build the dialog
             AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
             builder.setTitle(msgHelper.getString(MsgHelper.UPDATE_TITLE));
             builder.setMessage(msgHelper.getString(MsgHelper.UPDATE_MESSAGE));
-            // 更新
+            // Update
             builder.setPositiveButton(msgHelper.getString(MsgHelper.UPDATE_UPDATE_BTN), onClickListener);
             noticeDialog = builder.create();
         }
 
         if (!noticeDialog.isShowing()) noticeDialog.show();
 
-        noticeDialog.setCanceledOnTouchOutside(false);// 设置点击屏幕Dialog不消失
+        noticeDialog.setCanceledOnTouchOutside(false);// Do not dismiss when the screen is tapped
         return noticeDialog;
     }
 
 
     /**
-     * 显示软件下载对话框
+     * Show the application download dialog
      */
     public Map<String, Object> showDownloadDialog(OnClickListener onClickListenerNeg,
                                                   OnClickListener onClickListenerPos,
@@ -66,19 +66,19 @@ public class MsgBox {
         if (downloadDialog == null) {
             LOG.d(TAG, "showDownloadDialog");
 
-            // 构造软件下载对话框
+            // Build the application download dialog
             AlertDialog.Builder builder = new Builder(mContext);
             builder.setTitle(msgHelper.getString(MsgHelper.UPDATING));
-            // 给下载对话框增加进度条
+            // Add a progress bar to the download dialog
             final LayoutInflater inflater = LayoutInflater.from(mContext);
             View v = inflater.inflate(msgHelper.getLayout(MsgHelper.APPUPDATE_PROGRESS), null);
 
-            /* 更新进度条 */
+            /* Update progress */
             downloadDialogProgress = (ProgressBar) v.findViewById(msgHelper.getId(MsgHelper.UPDATE_PROGRESS));
             builder.setView(v);
-            // 取消更新
+            // Cancel the update
             //builder.setNegativeButton(msgHelper.getString("update_cancel"), onClickListener);
-            //转到后台更新
+            // Update in background
             builder.setNegativeButton(msgHelper.getString(MsgHelper.UPDATE_BG), onClickListenerNeg);
             builder.setNeutralButton(msgHelper.getString(MsgHelper.DOWNLOAD_COMPLETE_NEU_BTN), onClickListenerNeu);
             builder.setPositiveButton(msgHelper.getString(MsgHelper.DOWNLOAD_COMPLETE_POS_BTN), onClickListenerPos);
@@ -88,7 +88,7 @@ public class MsgBox {
         if (showDialog && !downloadDialog.isShowing()) downloadDialog.show();
 
         downloadDialog.setTitle(msgHelper.getString(MsgHelper.UPDATING));
-        downloadDialog.setCanceledOnTouchOutside(false);// 设置点击屏幕Dialog不消失
+        downloadDialog.setCanceledOnTouchOutside(false);// Do not dismiss when the screen is tapped
         if (downloadDialog.isShowing()) {
             downloadDialog.getButton(DialogInterface.BUTTON_NEGATIVE).setVisibility(View.VISIBLE); //Update in background
             downloadDialog.getButton(DialogInterface.BUTTON_NEUTRAL).setVisibility(View.GONE); //Install Manually
@@ -102,18 +102,18 @@ public class MsgBox {
     }
 
     /**
-     * 错误提示窗口
+     * Error dialog
      *
      * @param errorDialogOnClick
      */
     public Dialog showErrorDialog(OnClickListener errorDialogOnClick) {
         if (this.errorDialog == null) {
             LOG.d(TAG, "initErrorDialog");
-            // 构造对话框
+            // Build the dialog
             AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
             builder.setTitle(msgHelper.getString(MsgHelper.UPDATE_ERROR_TITLE));
             builder.setMessage(msgHelper.getString(MsgHelper.UPDATE_ERROR_MESSAGE));
-            // 更新
+            // Update
             builder.setPositiveButton(msgHelper.getString(MsgHelper.UPDATE_ERROR_YES_BTN), errorDialogOnClick);
             errorDialog = builder.create();
         }

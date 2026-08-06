@@ -4,35 +4,36 @@ package com.vaenow.appupdate.android;
  * Created by LuoWen on 2015/12/14.
  */
 public interface Constants {
-    /* 下载中 */
+    /* Downloading */
     int DOWNLOAD = 1;
-    /* 下载结束 */
+    /* Download complete */
     int DOWNLOAD_FINISH = 2;
-    /* 点击开始下载按钮*/
+    /* Download button clicked */
     int DOWNLOAD_CLICK_START = 3;
 
     /**
-     * 对比版本号
+     * Version comparison
      */
-    int VERSION_COMPARE_START = 200; //private 开始对比版本号; start to compare version
-    int VERSION_NEED_UPDATE = 201; //检查到需要更新； need update
-    int VERSION_UP_TO_UPDATE = 202; //软件是不需要更新；version up to date
-    int VERSION_UPDATING = 203; //软件正在更新；version is updating
+    int VERSION_COMPARE_START = 200; // Start comparing versions
+    int VERSION_NEED_UPDATE = 201; // Update available
+    int VERSION_UP_TO_UPDATE = 202; // Version is up to date
+    int VERSION_UPDATING = 203; // Update in progress
 
     /**
-     * 版本解析错误
+     * Version parsing errors
      */
-    int VERSION_RESOLVE_FAIL = 301; //版本文件解析错误 version-xml file resolve fail
-    int VERSION_COMPARE_FAIL = 302; //版本文件对比错误 version-xml file compare fail
+    int VERSION_RESOLVE_FAIL = 301; // Version XML parsing failed
+    int VERSION_COMPARE_FAIL = 302; // Version comparison failed
 
     /**
-     * 网络错误
+     * Network errors
      */
     int REMOTE_FILE_NOT_FOUND = 404;
     int NETWORK_ERROR = 405;
+    int OPERATION_IN_PROGRESS = 409;
 
     /**
-     * 没有相应的方法
+     * No such method
      */
     int NO_SUCH_METHOD = 501;
 
@@ -42,7 +43,7 @@ public interface Constants {
     int PERMISSION_DENIED = 601;
 
     /**
-     * 未知错误
+     * Unknown error
      */
     int UNKNOWN_ERROR = 901;
 

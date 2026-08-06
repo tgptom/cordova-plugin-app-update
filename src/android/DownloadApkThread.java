@@ -1,126 +1,162 @@
 package com.vaenow.appupdate.android;
 
-import android.AuthenticationOptions;
 import android.app.AlertDialog;
 import android.content.Context;
-import android.os.Environment;
+import android.content.pm.PackageInfo;
 import android.os.Handler;
 import android.widget.ProgressBar;
-import android.util.Base64;
 import org.json.JSONObject;
-import org.json.JSONException;
+import org.apache.cordova.LOG;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
-import java.lang.*;
-
-import java.nio.charset.StandardCharsets;
 
 /**
- * 下载文件线程
+ * File download thread
  */
 public class DownloadApkThread implements Runnable {
-    private String TAG = "DownloadApkThread";
+    private static final String TAG = "DownloadApkThread";
+    private static final int CONNECT_TIMEOUT_MS = 10000;
+    private static final int READ_TIMEOUT_MS = 30000;
+    private static final long OLD_DOWNLOAD_AGE_MS = 24L * 60L * 60L * 1000L;
 
-    /* 保存解析的XML信息 */
+    /* Parsed XML data */
     HashMap<String, String> mHashMap;
-    /* 下载保存路径 */
+    /* Download destination */
     private String mSavePath;
-    /* 记录进度条数量 */
+    /* Download progress */
     private int progress;
-    /* 是否取消更新 */
-    private boolean cancelUpdate = false;
-    private AlertDialog mDownloadDialog;
     private DownloadHandler downloadHandler;
     private Handler mHandler;
     private AuthenticationOptions authentication;
     private long uniqueVersionId;
+    private Context mContext;
+    private File apkFile;
 
     public DownloadApkThread(Context mContext, Handler mHandler, ProgressBar mProgress, AlertDialog mDownloadDialog, HashMap<String, String> mHashMap, JSONObject options) {
-        this.mDownloadDialog = mDownloadDialog;
         this.mHashMap = mHashMap;
         this.mHandler = mHandler;
+        this.mContext = mContext;
         this.authentication = new AuthenticationOptions(options);
 
-        this.mSavePath = Environment.getExternalStorageDirectory() + "/" + "download"; // SD Path
+        File downloadDirectory = mContext.getExternalFilesDir(null);
+        if (downloadDirectory == null) {
+            downloadDirectory = new File(mContext.getFilesDir(), "download");
+        }
+        this.mSavePath = new File(downloadDirectory, "appupdate").getAbsolutePath();
         this.uniqueVersionId = System.currentTimeMillis();
-        this.downloadHandler = new DownloadHandler(mContext, mProgress, mDownloadDialog, this.mSavePath, mHashMap, this.uniqueVersionId);
+        this.apkFile = new File(this.mSavePath, "update-" + this.uniqueVersionId + ".apk");
+        this.downloadHandler = new DownloadHandler(mContext, mProgress, mDownloadDialog, apkFile);
     }
 
 
     @Override
     public void run() {
         downloadAndInstall();
-        // 取消下载对话框显示
-        // mDownloadDialog.dismiss();
-    }
-
-    public void cancelBuildUpdate() {
-        this.cancelUpdate = true;
     }
 
     private void downloadAndInstall() {
+        HttpURLConnection conn = null;
+        File temporaryFile = null;
         try {
-            // 判断SD卡是否存在，并且是否具有读写权限
-            if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-                // 获得存储卡的路径
-                URL url = new URL(mHashMap.get("url"));
-                // 创建连接
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            File file = new File(mSavePath);
+            // Check whether the download directory exists
+            if (!file.exists() && !file.mkdirs()) {
+                throw new IOException("Failed to create directory: " + mSavePath);
+            }
+            deleteOldDownloads(file);
+            temporaryFile = new File(apkFile.getAbsolutePath() + ".part");
 
-                if(this.authentication.hasCredentials()){
-                    conn.setRequestProperty("Authorization", this.authentication.getEncodedAuthorization());
-                }
+            URL url = new URL(mHashMap.get("url"));
+            // Open the connection
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            conn.setReadTimeout(READ_TIMEOUT_MS);
+            conn.setInstanceFollowRedirects(!authentication.hasCredentials());
 
-                conn.connect();
-                // 获取文件大小
-                int length = conn.getContentLength();
-                // 创建输入流
-                InputStream is = conn.getInputStream();
+            if(this.authentication.hasCredentials()){
+                conn.setRequestProperty("Authorization", this.authentication.getEncodedAuthorization());
+            }
 
-                File file = new File(mSavePath);
-                // 判断文件目录是否存在
-                if (!file.exists()) {
-                    file.mkdir();
-                }
-                File apkFile = new File(mSavePath, mHashMap.get("name")+this.uniqueVersionId+".apk");
-                FileOutputStream fos = new FileOutputStream(apkFile);
-                int count = 0;
-                // 缓存
-                byte buf[] = new byte[1024];
+            int status = conn.getResponseCode();
+            if (status < HttpURLConnection.HTTP_OK || status >= HttpURLConnection.HTTP_MULT_CHOICE) {
+                throw new IOException("Unexpected HTTP status " + status);
+            }
+            // Get the file size
+            long length = conn.getContentLengthLong();
 
-                // 写入到文件中
-                do {
+            long count = 0;
+            // Read buffer
+            byte buf[] = new byte[1024];
+
+            try (InputStream is = conn.getInputStream(); FileOutputStream fos = new FileOutputStream(temporaryFile)) {
+                // Write to the file
+                while (true) {
                     int numread = is.read(buf);
-                    count += numread;
-                    // 计算进度条位置
-                    progress = (int) (((float) count / length) * 100);
-                    downloadHandler.updateProgress(progress);
-                    // 更新进度
-                    downloadHandler.sendEmptyMessage(Constants.DOWNLOAD);
-                    if (numread <= 0) {
-                        // 下载完成
-                        downloadHandler.sendEmptyMessage(Constants.DOWNLOAD_FINISH);
-                        mHandler.sendEmptyMessage(Constants.DOWNLOAD_FINISH);
+                    if (numread == -1) {
                         break;
                     }
-                    // 写入文件
+                    count += numread;
+                    // Calculate download progress
+                    progress = (length > 0) ? (int) Math.min(100, (count * 100) / length) : 0;
+                    downloadHandler.updateProgress(progress);
+                    // Update progress
+                    downloadHandler.sendEmptyMessage(Constants.DOWNLOAD);
+                    // Write to the file
                     fos.write(buf, 0, numread);
-                } while (!cancelUpdate);// 点击取消就停止下载.
-                fos.close();
-                is.close();
+                }
+                fos.flush();
             }
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
+
+            if (length >= 0 && count != length) {
+                throw new IOException("Incomplete download: expected " + length + " bytes but received " + count);
+            }
+            validateApk(temporaryFile);
+            if (!temporaryFile.renameTo(apkFile)) {
+                throw new IOException("Failed to finalize downloaded APK");
+            }
+
+            temporaryFile = null;
+            downloadHandler.sendEmptyMessage(Constants.DOWNLOAD_FINISH);
+            mHandler.sendEmptyMessage(Constants.DOWNLOAD_FINISH);
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.e(TAG, "APK download failed", e);
+            mHandler.sendEmptyMessage(Constants.NETWORK_ERROR);
+        } finally {
+            if (temporaryFile != null && temporaryFile.exists() && !temporaryFile.delete()) {
+                LOG.w(TAG, "Unable to delete incomplete APK: " + temporaryFile);
+            }
+            if (conn != null) {
+                conn.disconnect();
+            }
         }
 
+    }
+
+    private void validateApk(File apkFile) throws IOException {
+        PackageInfo packageInfo = mContext.getPackageManager().getPackageArchiveInfo(apkFile.getAbsolutePath(), 0);
+        if (packageInfo == null || !mContext.getPackageName().equals(packageInfo.packageName)) {
+            throw new IOException("Downloaded file is not an APK update for this application");
+        }
+    }
+
+    private void deleteOldDownloads(File directory) {
+        File[] files = directory.listFiles();
+        if (files == null) {
+            return;
+        }
+        long expirationTime = System.currentTimeMillis() - OLD_DOWNLOAD_AGE_MS;
+        for (File file : files) {
+            if ((file.getName().endsWith(".apk") || file.getName().endsWith(".part"))
+                    && file.lastModified() < expirationTime
+                    && !file.delete()) {
+                LOG.w(TAG, "Unable to delete old download: " + file);
+            }
+        }
     }
 }

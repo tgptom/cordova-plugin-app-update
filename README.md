@@ -3,9 +3,7 @@ App updater for Cordova/PhoneGap
 
 # Install
 
-### Latest published version on npm (with Cordova CLI >= 5.0.0) 
-
-> `"cordova-android": "6.3.0"`
+### Latest published version on npm (with Cordova CLI >= 5.0.0)
 
 `cordova plugin add cordova-plugin-app-update --save`
 
@@ -13,14 +11,14 @@ App updater for Cordova/PhoneGap
 
 - Simple:
 ```js
-var updateUrl = "http://192.168.0.1/version.xml";
+var updateUrl = "https://192.168.0.1/version.xml";
 window.AppUpdate.checkAppUpdate(onSuccess, onFail, updateUrl);
 ```
 
 - Verbose
 ```js
 var appUpdate = cordova.require('cordova-plugin-app-update.AppUpdate');
-var updateUrl = "http://192.168.0.1/version.xml";
+var updateUrl = "https://192.168.0.1/version.xml";
 appUpdate.checkAppUpdate(onSuccess, onFail, updateUrl);
 ```
 
@@ -64,9 +62,15 @@ versionName | versionCode
 <update>
     <version>302048</version>
     <name>name</name>
-    <url>http://192.168.0.1/android.apk</url>
+    <url>https://192.168.0.1/android.apk</url>
 </update>
 ```
+
+### Compatibility notes
+
+- Recommended for modern Cordova Android projects (`cordova-android` 14.x/15.x).
+- HTTPS is recommended for update metadata and APK URLs, but HTTP URLs are also supported when permitted by the app's Android network security configuration.
+- APK files are downloaded into app-specific external storage.
 
 ### `checkAppUpdate` code
 
@@ -89,6 +93,7 @@ versionName | versionCode
      */
     int REMOTE_FILE_NOT_FOUND = 404;
     int NETWORK_ERROR = 405;
+    int OPERATION_IN_PROGRESS = 409;
 
     /**
      * No such method

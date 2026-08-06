@@ -17,32 +17,43 @@ public class ParseXmlService {
     public HashMap<String, String> parseXml(InputStream inStream) throws Exception {
         HashMap<String, String> hashMap = new HashMap<String, String>();
 
-        // 实例化一个文档构建器工厂
+        // Create a document builder factory
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        // 通过文档构建器工厂获取一个文档构建器
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+        factory.setXIncludeAware(false);
+        factory.setExpandEntityReferences(false);
+        // Get a document builder from the factory
         DocumentBuilder builder = factory.newDocumentBuilder();
-        // 通过文档通过文档构建器构建一个文档实例
+        // Parse the input stream into a document
         Document document = builder.parse(inStream);
-        //获取XML文件根节点
+        // Get the XML root element
         Element root = document.getDocumentElement();
-        //获得所有子节点
+        // Get all child nodes
         NodeList childNodes = root.getChildNodes();
         for (int j = 0; j < childNodes.getLength(); j++) {
-            //遍历子节点
+            // Iterate over the child nodes
             Node childNode = (Node) childNodes.item(j);
             if (childNode.getNodeType() == Node.ELEMENT_NODE) {
                 Element childElement = (Element) childNode;
-                //版本号
+                String value = childElement.getTextContent();
+                if (value == null || value.trim().isEmpty()) {
+                    continue;
+                }
+                value = value.trim();
+                // Version code
                 if ("version".equals(childElement.getNodeName())) {
-                    hashMap.put("version", childElement.getFirstChild().getNodeValue());
+                    hashMap.put("version", value);
                 }
-                //软件名称
+                // Application name
                 else if (("name".equals(childElement.getNodeName()))) {
-                    hashMap.put("name", childElement.getFirstChild().getNodeValue());
+                    hashMap.put("name", value);
                 }
-                //下载地址
+                // Download URL
                 else if (("url".equals(childElement.getNodeName()))) {
-                    hashMap.put("url", childElement.getFirstChild().getNodeValue());
+                    hashMap.put("url", value);
                 }
             }
         }

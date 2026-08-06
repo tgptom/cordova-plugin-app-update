@@ -16,7 +16,6 @@ import android.view.View.OnClickListener;
 import android.widget.ProgressBar;
 import androidx.core.content.FileProvider;
 import java.io.File;
-import java.util.HashMap;
 
 import org.apache.cordova.LOG;
 
@@ -27,38 +26,32 @@ public class DownloadHandler extends Handler {
     private String TAG = "DownloadHandler";
 
     private Context mContext;
-    /* 更新进度条 */
+    /* Progress bar */
     private ProgressBar mProgress;
-    /* 记录进度条数量 */
+    /* Download progress */
     private int progress;
-    /* 下载保存路径 */
-    private String mSavePath;
-    /* 保存解析的XML信息 */
-    private HashMap<String, String> mHashMap;
+    private File apkFile;
     private MsgHelper msgHelper;
     private AlertDialog mDownloadDialog;
-    private long uniqueVersionId;
 
-    public DownloadHandler(Context mContext, ProgressBar mProgress, AlertDialog mDownloadDialog, String mSavePath, HashMap<String, String> mHashMap, long uniqueVersionId) {
+    public DownloadHandler(Context mContext, ProgressBar mProgress, AlertDialog mDownloadDialog, File apkFile) {
         this.msgHelper = new MsgHelper(mContext.getPackageName(), mContext.getResources());
         this.mDownloadDialog = mDownloadDialog;
         this.mContext = mContext;
         this.mProgress = mProgress;
-        this.mSavePath = mSavePath;
-        this.mHashMap = mHashMap;
-        this.uniqueVersionId = uniqueVersionId;
+        this.apkFile = apkFile;
     }
 
     public void handleMessage(Message msg) {
         switch (msg.what) {
-            // 正在下载
+            // Downloading
             case Constants.DOWNLOAD:
-                // 设置进度条位置
+                // Update the progress bar
                 mProgress.setProgress(progress);
                 break;
             case Constants.DOWNLOAD_FINISH:
                 updateMsgDialog();
-                // 安装文件
+                // Install the file
                 installApk();
                 break;
             default:
@@ -89,27 +82,27 @@ public class DownloadHandler extends Handler {
     };
 
     /**
-     * 安装APK文件
+     * Install the APK file
      */
     private void installApk() {
         LOG.d(TAG, "Installing APK");
 
-        File apkFile = new File(mSavePath, mHashMap.get("name")+this.uniqueVersionId+".apk");
         if (!apkFile.exists()) {
-            LOG.e(TAG, "Could not find APK: " + mHashMap.get("name")+this.uniqueVersionId);
+            LOG.e(TAG, "Could not find APK: " + apkFile);
             return;
         }
 
         LOG.d(TAG, "APK Filename: " + apkFile.toString());
 
-        // 通过Intent安装APK文件
+        // Install the APK file using an Intent
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
             LOG.d(TAG, "Build SDK Greater than or equal to Nougat");
             String applicationId = (String) BuildHelper.getBuildConfigValue((Activity) mContext, "APPLICATION_ID");
             Uri apkUri = FileProvider.getUriForFile(mContext, applicationId + ".appupdate.provider", apkFile);
             Intent i = new Intent(Intent.ACTION_INSTALL_PACKAGE);
             i.setData(apkUri);
-            i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             i.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
             mContext.startActivity(i);
         }else{

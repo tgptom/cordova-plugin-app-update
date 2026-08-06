@@ -1,4 +1,4 @@
-package android;
+package com.vaenow.appupdate.android;
 
 
 import android.util.Base64;
@@ -36,7 +36,7 @@ public class AuthenticationOptions {
 
     public String getEncodedAuthorization() {
         return "Basic " + Base64.encodeToString((this.username + ":" + this.password)
-                .getBytes(StandardCharsets.UTF_8), Base64.DEFAULT);
+                .getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
     }
 
     public String getAuthType() {
