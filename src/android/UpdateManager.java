@@ -221,7 +221,6 @@ public class UpdateManager {
     };
     /**
      * Download again
-     * Download again
      */
     private OnClickListener downloadDialogOnClickPos = new OnClickListener() {
         @Override
@@ -231,7 +230,6 @@ public class UpdateManager {
         }
     };
     /**
-     * Update in background
      * Update in background
      */
     private OnClickListener downloadDialogOnClickNeg = new OnClickListener() {
