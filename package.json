@@ -22,7 +22,7 @@
     "ecosystem:cordova",
     "cordova-android"
   ],
-  "author": "vaenow",
+  "author": "tgptom",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/tgptom/cordova-plugin-app-update/issues"
