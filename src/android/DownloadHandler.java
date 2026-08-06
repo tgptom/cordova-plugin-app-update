@@ -27,13 +27,13 @@ public class DownloadHandler extends Handler {
     private String TAG = "DownloadHandler";
 
     private Context mContext;
-    /* 更新进度条 */
+    /* Progress bar */
     private ProgressBar mProgress;
-    /* 记录进度条数量 */
+    /* Download progress */
     private int progress;
-    /* 下载保存路径 */
+    /* Download destination */
     private String mSavePath;
-    /* 保存解析的XML信息 */
+    /* Parsed XML data */
     private HashMap<String, String> mHashMap;
     private MsgHelper msgHelper;
     private AlertDialog mDownloadDialog;
@@ -51,14 +51,14 @@ public class DownloadHandler extends Handler {
 
     public void handleMessage(Message msg) {
         switch (msg.what) {
-            // 正在下载
+            // Downloading
             case Constants.DOWNLOAD:
-                // 设置进度条位置
+                // Update the progress bar
                 mProgress.setProgress(progress);
                 break;
             case Constants.DOWNLOAD_FINISH:
                 updateMsgDialog();
-                // 安装文件
+                // Install the file
                 installApk();
                 break;
             default:
@@ -89,7 +89,7 @@ public class DownloadHandler extends Handler {
     };
 
     /**
-     * 安装APK文件
+     * Install the APK file
      */
     private void installApk() {
         LOG.d(TAG, "Installing APK");
@@ -102,7 +102,7 @@ public class DownloadHandler extends Handler {
 
         LOG.d(TAG, "APK Filename: " + apkFile.toString());
 
-        // 通过Intent安装APK文件
+        // Install the APK file using an Intent
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
             LOG.d(TAG, "Build SDK Greater than or equal to Nougat");
             String applicationId = (String) BuildHelper.getBuildConfigValue((Activity) mContext, "APPLICATION_ID");

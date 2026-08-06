@@ -26,11 +26,11 @@ public class UpdateManager {
     public static final String TAG = "UpdateManager";
 
     /*
-     * 远程的版本文件格式
+     * Remote version file format
      *   <update>
      *       <version>2222</version>
      *       <name>name</name>
-     *       <url>http://192.168.3.102/android.apk</url>
+     *       <url>https://192.168.3.102/android.apk</url>
      *   </update>
      */
     private String updateXmlUrl;
@@ -83,7 +83,7 @@ public class UpdateManager {
 
             switch (msg.what) {
                 case Constants.NETWORK_ERROR:
-                    //暂时隐藏错误
+                    // Temporarily hide the error
                     //msgBox.showErrorDialog(errorDialogOnClick);
                     callbackContext.error(Utils.makeJSON(Constants.NETWORK_ERROR, "network error"));
                     break;
@@ -122,7 +122,7 @@ public class UpdateManager {
     };
 
     /**
-     * 检测软件更新
+     * Check for application updates
      */
     public void checkUpdate() {
         LOG.d(TAG, "checkUpdate..");
@@ -142,7 +142,7 @@ public class UpdateManager {
     }
 
     /**
-     * 对比版本号
+     * Compare version codes
      */
     private void compareVersions() {
         Version version = queue.get(0);
@@ -159,8 +159,8 @@ public class UpdateManager {
             skipProgressDialog = options.getBoolean("skipProgressDialog");
         } catch (JSONException e) {}
 
-        //比对版本号
-        //检查软件是否有更新版本
+        // Compare version codes
+        // Check whether a newer application version is available
         if (versionCodeLocal < versionCodeRemote) {
             if (isDownloading) {
                 msgBox.showDownloadDialog(null, null, null, !skipProgressDialog);
@@ -170,7 +170,7 @@ public class UpdateManager {
                 if (skipPromptDialog) {
                     mHandler.sendEmptyMessage(Constants.DOWNLOAD_CLICK_START);
                 } else {
-                    // 显示提示对话框
+                    // Show the update prompt
                     msgBox.showNoticeDialog(noticeDialogOnClick);
                     mHandler.sendEmptyMessage(Constants.VERSION_NEED_UPDATE);
                 }
@@ -198,19 +198,19 @@ public class UpdateManager {
             skipProgressDialog = options.getBoolean("skipProgressDialog");
         } catch (JSONException e) {}
 
-        // 显示下载对话框
+        // Show the download dialog
         Map<String, Object> ret = msgBox.showDownloadDialog(
                 downloadDialogOnClickNeg,
                 downloadDialogOnClickPos,
                 downloadDialogOnClickNeu,
                 !skipProgressDialog);
 
-        // 下载文件
+        // Download the file
         downloadApk((AlertDialog) ret.get("dialog"), (ProgressBar) ret.get("progress"));
     }
 
     /**
-     * 手动安装
+     * Install manually
      * Download again
      */
     private OnClickListener downloadDialogOnClickNeu = new OnClickListener() {
@@ -220,7 +220,7 @@ public class UpdateManager {
         }
     };
     /**
-     * 重新下载
+     * Download again
      * Download again
      */
     private OnClickListener downloadDialogOnClickPos = new OnClickListener() {
@@ -231,14 +231,14 @@ public class UpdateManager {
         }
     };
     /**
-     * 转到后台更新
+     * Update in background
      * Update in background
      */
     private OnClickListener downloadDialogOnClickNeg = new OnClickListener() {
         @Override
         public void onClick(DialogInterface dialog, int which) {
             dialog.dismiss();
-            // 设置取消状态
+            // Set the cancellation state
             //downloadApkThread.cancelBuildUpdate();
         }
     };
@@ -251,7 +251,7 @@ public class UpdateManager {
     };
 
     /**
-     * 下载apk文件
+     * Download the APK file
      *
      * @param mProgress
      * @param mDownloadDialog
@@ -259,7 +259,7 @@ public class UpdateManager {
     private void downloadApk(AlertDialog mDownloadDialog, ProgressBar mProgress) {
         LOG.d(TAG, "downloadApk" + mProgress);
 
-        // 启动新线程下载软件
+        // Start the application download on a new thread
         downloadApkThread = new DownloadApkThread(mContext, mHandler, mProgress, mDownloadDialog, checkUpdateThread.getMHashMap(), options);
         this.cordova.getThreadPool().execute(downloadApkThread);
         // new Thread(downloadApkThread).start();

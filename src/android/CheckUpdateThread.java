@@ -25,7 +25,7 @@ import 	java.nio.charset.StandardCharsets;
 public class CheckUpdateThread implements Runnable {
     private String TAG = "CheckUpdateThread";
 
-    /* 保存解析的XML信息 */
+    /* Parsed XML data */
     HashMap<String, String> mHashMap;
     private Context mContext;
     private List<Version> queue;
@@ -53,8 +53,8 @@ public class CheckUpdateThread implements Runnable {
 
     @Override
     public void run() {
-        int versionCodeLocal = getVersionCodeLocal(mContext); // 获取当前软件版本
-        int versionCodeRemote = getVersionCodeRemote();  //获取服务器当前软件版本
+        int versionCodeLocal = getVersionCodeLocal(mContext); // Get the installed application version
+        int versionCodeRemote = getVersionCodeRemote();  // Get the server application version
 
         queue.clear(); //ensure the queue is empty
         queue.add(new Version(versionCodeLocal, versionCodeRemote));
@@ -67,7 +67,7 @@ public class CheckUpdateThread implements Runnable {
     }
 
     /**
-     * 通过url返回文件
+     * Return a file input stream from a URL
      *
      * @param path
      * @return
@@ -80,7 +80,7 @@ public class CheckUpdateThread implements Runnable {
 
         try {
             url = new URL(path);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();//利用HttpURLConnection对象,我们可以从网络中获取网页数据.
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();// Use HttpURLConnection to retrieve remote data
 
             if(this.authentication.hasCredentials()){
                 conn.setRequestProperty("Authorization", this.authentication.getEncodedAuthorization());
@@ -88,7 +88,7 @@ public class CheckUpdateThread implements Runnable {
 
             conn.setDoInput(true);
             conn.connect();
-            is = conn.getInputStream(); //得到网络返回的输入流
+            is = conn.getInputStream(); // Get the response input stream
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             mHandler.sendEmptyMessage(Constants.REMOTE_FILE_NOT_FOUND);
@@ -101,7 +101,7 @@ public class CheckUpdateThread implements Runnable {
     }
 
     /**
-     * 获取软件版本号
+     * Get the installed application version code
      * <p/>
      * It's weird, I don't know why.
      * <pre>
@@ -120,7 +120,7 @@ public class CheckUpdateThread implements Runnable {
 
         int versionCode = 0;
         try {
-            // 获取软件版本号，对应AndroidManifest.xml下android:versionCode
+            // Get the application version code from android:versionCode in AndroidManifest.xml
             versionCode = context.getPackageManager().getPackageInfo(packageName, 0).versionCode;
         } catch (NameNotFoundException e) {
             e.printStackTrace();
@@ -129,7 +129,7 @@ public class CheckUpdateThread implements Runnable {
     }
 
     /**
-     * 获取服务器软件版本号
+     * Get the server application version code
      *
      * @return
      */
@@ -137,7 +137,7 @@ public class CheckUpdateThread implements Runnable {
         int versionCodeRemote = 0;
 
         InputStream is = returnFileIS(updateXmlUrl);
-        // 解析XML文件。 由于XML文件比较小，因此使用DOM方式进行解析
+        // Parse the small XML file using DOM
         ParseXmlService service = new ParseXmlService();
         try {
             setMHashMap(service.parseXml(is));

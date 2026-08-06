@@ -11,14 +11,14 @@ App updater for Cordova/PhoneGap
 
 - Simple:
 ```js
-var updateUrl = "http://192.168.0.1/version.xml";
+var updateUrl = "https://192.168.0.1/version.xml";
 window.AppUpdate.checkAppUpdate(onSuccess, onFail, updateUrl);
 ```
 
 - Verbose
 ```js
 var appUpdate = cordova.require('cordova-plugin-app-update.AppUpdate');
-var updateUrl = "http://192.168.0.1/version.xml";
+var updateUrl = "https://192.168.0.1/version.xml";
 appUpdate.checkAppUpdate(onSuccess, onFail, updateUrl);
 ```
 
@@ -62,7 +62,7 @@ versionName | versionCode
 <update>
     <version>302048</version>
     <name>name</name>
-    <url>http://192.168.0.1/android.apk</url>
+    <url>https://192.168.0.1/android.apk</url>
 </update>
 ```
 
@@ -70,7 +70,6 @@ versionName | versionCode
 
 - Recommended for modern Cordova Android projects (`cordova-android` 14.x/15.x).
 - APK files are downloaded into app-specific external storage.
-- Use HTTPS for `version.xml` and APK URLs in production.
 
 ### `checkAppUpdate` code
 

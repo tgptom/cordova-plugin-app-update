@@ -22,18 +22,18 @@ import java.lang.*;
 import java.nio.charset.StandardCharsets;
 
 /**
- * 下载文件线程
+ * File download thread
  */
 public class DownloadApkThread implements Runnable {
     private String TAG = "DownloadApkThread";
 
-    /* 保存解析的XML信息 */
+    /* Parsed XML data */
     HashMap<String, String> mHashMap;
-    /* 下载保存路径 */
+    /* Download destination */
     private String mSavePath;
-    /* 记录进度条数量 */
+    /* Download progress */
     private int progress;
-    /* 是否取消更新 */
+    /* Whether the update has been canceled */
     private boolean cancelUpdate = false;
     private AlertDialog mDownloadDialog;
     private DownloadHandler downloadHandler;
@@ -60,7 +60,7 @@ public class DownloadApkThread implements Runnable {
     @Override
     public void run() {
         downloadAndInstall();
-        // 取消下载对话框显示
+        // Dismiss the download dialog
         // mDownloadDialog.dismiss();
     }
 
@@ -72,14 +72,14 @@ public class DownloadApkThread implements Runnable {
         HttpURLConnection conn = null;
         try {
             File file = new File(mSavePath);
-            // 判断文件目录是否存在
+            // Check whether the download directory exists
             if (!file.exists() && !file.mkdirs()) {
                 throw new IOException("Failed to create directory: " + mSavePath);
             }
             File apkFile = new File(mSavePath, mHashMap.get("name")+this.uniqueVersionId+".apk");
 
             URL url = new URL(mHashMap.get("url"));
-            // 创建连接
+            // Open the connection
             conn = (HttpURLConnection) url.openConnection();
 
             if(this.authentication.hasCredentials()){
@@ -87,32 +87,32 @@ public class DownloadApkThread implements Runnable {
             }
 
             conn.connect();
-            // 获取文件大小
+            // Get the file size
             int length = conn.getContentLength();
 
             int count = 0;
-            // 缓存
+            // Read buffer
             byte buf[] = new byte[1024];
 
             try (InputStream is = conn.getInputStream(); FileOutputStream fos = new FileOutputStream(apkFile)) {
-                // 写入到文件中
+                // Write to the file
                 do {
                     int numread = is.read(buf);
                     if (numread <= 0) {
-                        // 下载完成
+                        // Download complete
                         downloadHandler.sendEmptyMessage(Constants.DOWNLOAD_FINISH);
                         mHandler.sendEmptyMessage(Constants.DOWNLOAD_FINISH);
                         break;
                     }
                     count += numread;
-                    // 计算进度条位置
+                    // Calculate download progress
                     progress = (length > 0) ? (int) (((float) count / length) * 100) : 0;
                     downloadHandler.updateProgress(progress);
-                    // 更新进度
+                    // Update progress
                     downloadHandler.sendEmptyMessage(Constants.DOWNLOAD);
-                    // 写入文件
+                    // Write to the file
                     fos.write(buf, 0, numread);
-                } while (!cancelUpdate);// 点击取消就停止下载.
+                } while (!cancelUpdate);// Stop downloading when canceled.
             }
         } catch (MalformedURLException e) {
             e.printStackTrace();
