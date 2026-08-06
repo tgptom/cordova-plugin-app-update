@@ -48,7 +48,11 @@ public class DownloadApkThread implements Runnable {
         this.mHandler = mHandler;
         this.authentication = new AuthenticationOptions(options);
 
-        this.mSavePath = Environment.getExternalStorageDirectory() + "/" + "download"; // SD Path
+        File downloadDirectory = mContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+        if (downloadDirectory == null) {
+            downloadDirectory = new File(mContext.getFilesDir(), "download");
+        }
+        this.mSavePath = downloadDirectory.getAbsolutePath();
         this.uniqueVersionId = System.currentTimeMillis();
         this.downloadHandler = new DownloadHandler(mContext, mProgress, mDownloadDialog, this.mSavePath, mHashMap, this.uniqueVersionId);
     }
@@ -67,55 +71,51 @@ public class DownloadApkThread implements Runnable {
 
     private void downloadAndInstall() {
         try {
-            // 判断SD卡是否存在，并且是否具有读写权限
-            if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-                // 获得存储卡的路径
-                URL url = new URL(mHashMap.get("url"));
-                // 创建连接
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            URL url = new URL(mHashMap.get("url"));
+            // 创建连接
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
-                if(this.authentication.hasCredentials()){
-                    conn.setRequestProperty("Authorization", this.authentication.getEncodedAuthorization());
-                }
-
-                conn.connect();
-                // 获取文件大小
-                int length = conn.getContentLength();
-                // 创建输入流
-                InputStream is = conn.getInputStream();
-
-                File file = new File(mSavePath);
-                // 判断文件目录是否存在
-                if (!file.exists()) {
-                    file.mkdir();
-                }
-                File apkFile = new File(mSavePath, mHashMap.get("name")+this.uniqueVersionId+".apk");
-                FileOutputStream fos = new FileOutputStream(apkFile);
-                int count = 0;
-                // 缓存
-                byte buf[] = new byte[1024];
-
-                // 写入到文件中
-                do {
-                    int numread = is.read(buf);
-                    count += numread;
-                    // 计算进度条位置
-                    progress = (int) (((float) count / length) * 100);
-                    downloadHandler.updateProgress(progress);
-                    // 更新进度
-                    downloadHandler.sendEmptyMessage(Constants.DOWNLOAD);
-                    if (numread <= 0) {
-                        // 下载完成
-                        downloadHandler.sendEmptyMessage(Constants.DOWNLOAD_FINISH);
-                        mHandler.sendEmptyMessage(Constants.DOWNLOAD_FINISH);
-                        break;
-                    }
-                    // 写入文件
-                    fos.write(buf, 0, numread);
-                } while (!cancelUpdate);// 点击取消就停止下载.
-                fos.close();
-                is.close();
+            if(this.authentication.hasCredentials()){
+                conn.setRequestProperty("Authorization", this.authentication.getEncodedAuthorization());
             }
+
+            conn.connect();
+            // 获取文件大小
+            int length = conn.getContentLength();
+            // 创建输入流
+            InputStream is = conn.getInputStream();
+
+            File file = new File(mSavePath);
+            // 判断文件目录是否存在
+            if (!file.exists() && !file.mkdirs()) {
+                throw new IOException("Failed to create directory: " + mSavePath);
+            }
+            File apkFile = new File(mSavePath, mHashMap.get("name")+this.uniqueVersionId+".apk");
+            FileOutputStream fos = new FileOutputStream(apkFile);
+            int count = 0;
+            // 缓存
+            byte buf[] = new byte[1024];
+
+            // 写入到文件中
+            do {
+                int numread = is.read(buf);
+                if (numread <= 0) {
+                    // 下载完成
+                    downloadHandler.sendEmptyMessage(Constants.DOWNLOAD_FINISH);
+                    mHandler.sendEmptyMessage(Constants.DOWNLOAD_FINISH);
+                    break;
+                }
+                count += numread;
+                // 计算进度条位置
+                progress = (length > 0) ? (int) (((float) count / length) * 100) : 0;
+                downloadHandler.updateProgress(progress);
+                // 更新进度
+                downloadHandler.sendEmptyMessage(Constants.DOWNLOAD);
+                // 写入文件
+                fos.write(buf, 0, numread);
+            } while (!cancelUpdate);// 点击取消就停止下载.
+            fos.close();
+            is.close();
         } catch (MalformedURLException e) {
             e.printStackTrace();
         } catch (IOException e) {

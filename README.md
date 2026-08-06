@@ -3,9 +3,7 @@ App updater for Cordova/PhoneGap
 
 # Install
 
-### Latest published version on npm (with Cordova CLI >= 5.0.0) 
-
-> `"cordova-android": "6.3.0"`
+### Latest published version on npm (with Cordova CLI >= 5.0.0)
 
 `cordova plugin add cordova-plugin-app-update --save`
 
@@ -67,6 +65,12 @@ versionName | versionCode
     <url>http://192.168.0.1/android.apk</url>
 </update>
 ```
+
+### Compatibility notes
+
+- Recommended for modern Cordova Android projects (`cordova-android` 14.x/15.x).
+- APK files are downloaded into app-specific external storage.
+- Use HTTPS for `version.xml` and APK URLs in production.
 
 ### `checkAppUpdate` code
 
