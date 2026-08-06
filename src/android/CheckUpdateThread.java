@@ -82,10 +82,11 @@ public class CheckUpdateThread implements Runnable {
         LOG.d(TAG, "returnFileIS..");
 
         URL url = new URL(path);
+        requireHttps(url, "Update metadata URL");
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
         conn.setReadTimeout(READ_TIMEOUT_MS);
-        conn.setInstanceFollowRedirects(true);
+        conn.setInstanceFollowRedirects(!authentication.hasCredentials());
 
         if(this.authentication.hasCredentials()){
             conn.setRequestProperty("Authorization", this.authentication.getEncodedAuthorization());
@@ -93,6 +94,7 @@ public class CheckUpdateThread implements Runnable {
 
         conn.setDoInput(true);
         int status = conn.getResponseCode();
+        requireHttps(conn.getURL(), "Update metadata redirect URL");
         if (status == HttpURLConnection.HTTP_NOT_FOUND) {
             conn.disconnect();
             throw new FileNotFoundException(path);
@@ -158,11 +160,14 @@ public class CheckUpdateThread implements Runnable {
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException("Invalid APK URL", e);
         }
-        if (!"https".equalsIgnoreCase(apkUrl.getProtocol())
-                && !"http".equalsIgnoreCase(apkUrl.getProtocol())) {
-            throw new IllegalArgumentException("APK URL must use HTTP or HTTPS");
-        }
+        requireHttps(apkUrl, "APK URL");
         return versionCode;
+    }
+
+    private void requireHttps(URL url, String label) {
+        if (!"https".equalsIgnoreCase(url.getProtocol())) {
+            throw new IllegalArgumentException(label + " must use HTTPS");
+        }
     }
 
     private static class DisconnectingInputStream extends java.io.FilterInputStream {

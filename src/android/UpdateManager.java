@@ -40,7 +40,6 @@ public class UpdateManager {
      */
     private String updateXmlUrl;
     private JSONObject options;
-    private JSONArray args;
     private CordovaInterface cordova;
     private CallbackContext callbackContext;
     private String packageName;
@@ -48,6 +47,7 @@ public class UpdateManager {
     private MsgBox msgBox;
     private final AtomicBoolean isChecking = new AtomicBoolean(false);
     private final AtomicBoolean isDownloading = new AtomicBoolean(false);
+    private final AtomicBoolean operationInProgress = new AtomicBoolean(false);
     private List<Version> queue = new ArrayList<Version>(1);
     private CheckUpdateThread checkUpdateThread;
     private DownloadApkThread downloadApkThread;
@@ -61,33 +61,21 @@ public class UpdateManager {
         msgBox = new MsgBox(mContext);
     }
 
-    public UpdateManager(JSONArray args, CallbackContext callbackContext, Context context, JSONObject options) {
-        this(args, callbackContext, context, "http://192.168.3.102:8080/update_apk/version.xml", options);
-    }
-
-    public UpdateManager(JSONArray args, CallbackContext callbackContext, Context context, String updateUrl, JSONObject options) {
-        this.args = args;
-        this.callbackContext = callbackContext;
-        this.updateXmlUrl = updateUrl;
-        this.options = options;
-        this.mContext = context;
-        this.installPermissionRequester = new InstallPermissionRequester() {
-            @Override
-            public void runWithInstallPermission(Runnable action) {
-                action.run();
-            }
-        };
-        packageName = mContext.getPackageName();
-        msgBox = new MsgBox(mContext);
-    }
-
-    public UpdateManager options(JSONArray args, CallbackContext callbackContext)
+    public boolean options(JSONArray args, CallbackContext callbackContext)
             throws JSONException {
-        this.args = args;
-        this.callbackContext = callbackContext;
-        this.updateXmlUrl = args.getString(0);
-        this.options = args.getJSONObject(1);
-        return this;
+        if (!operationInProgress.compareAndSet(false, true)) {
+            callbackContext.error(Utils.makeJSON(Constants.VERSION_UPDATING, "an update operation is already in progress"));
+            return false;
+        }
+        try {
+            this.callbackContext = callbackContext;
+            this.updateXmlUrl = args.getString(0);
+            this.options = args.getJSONObject(1);
+            return true;
+        } catch (JSONException e) {
+            operationInProgress.set(false);
+            throw e;
+        }
     }
 
     private Handler mHandler = new Handler() {
@@ -99,8 +87,7 @@ public class UpdateManager {
                 case Constants.NETWORK_ERROR:
                     isChecking.set(false);
                     isDownloading.set(false);
-                    // Temporarily hide the error
-                    //msgBox.showErrorDialog(errorDialogOnClick);
+                    operationInProgress.set(false);
                     callbackContext.error(Utils.makeJSON(Constants.NETWORK_ERROR, "network error"));
                     break;
                 case Constants.VERSION_COMPARE_START:
@@ -112,6 +99,7 @@ public class UpdateManager {
                     break;
                 case Constants.DOWNLOAD_FINISH:
                     isDownloading.set(false);
+                    operationInProgress.set(false);
                     break;
                 case Constants.VERSION_UPDATING:
                     callbackContext.success(Utils.makeJSON(Constants.VERSION_UPDATING, "success, version updating."));
@@ -120,21 +108,26 @@ public class UpdateManager {
                     callbackContext.success(Utils.makeJSON(Constants.VERSION_NEED_UPDATE, "success, need update."));
                     break;
                 case Constants.VERSION_UP_TO_UPDATE:
+                    operationInProgress.set(false);
                     callbackContext.success(Utils.makeJSON(Constants.VERSION_UP_TO_UPDATE, "success, up to date."));
                     break;
                 case Constants.VERSION_COMPARE_FAIL:
                     isChecking.set(false);
+                    operationInProgress.set(false);
                     callbackContext.error(Utils.makeJSON(Constants.VERSION_COMPARE_FAIL, "version compare fail"));
                     break;
                 case Constants.VERSION_RESOLVE_FAIL:
                     isChecking.set(false);
+                    operationInProgress.set(false);
                     callbackContext.error(Utils.makeJSON(Constants.VERSION_RESOLVE_FAIL, "version resolve fail"));
                     break;
                 case Constants.REMOTE_FILE_NOT_FOUND:
                     isChecking.set(false);
+                    operationInProgress.set(false);
                     callbackContext.error(Utils.makeJSON(Constants.REMOTE_FILE_NOT_FOUND, "remote file not found"));
                     break;
                 default:
+                    operationInProgress.set(false);
                     callbackContext.error(Utils.makeJSON(Constants.UNKNOWN_ERROR, "unknown error"));
             }
 
@@ -146,6 +139,7 @@ public class UpdateManager {
      */
     public boolean checkUpdate() {
         if (!isChecking.compareAndSet(false, true)) {
+            operationInProgress.set(false);
             callbackContext.error(Utils.makeJSON(Constants.VERSION_UPDATING, "an update check is already in progress"));
             return false;
         }
@@ -164,6 +158,7 @@ public class UpdateManager {
         LOG.d(TAG, "permissionsDenied..");
 
         isDownloading.set(false);
+        operationInProgress.set(false);
         callbackContext.error(Utils.makeJSON(Constants.PERMISSION_DENIED, errMsg));
     }
 
@@ -274,15 +269,6 @@ public class UpdateManager {
         @Override
         public void onClick(DialogInterface dialog, int which) {
             dialog.dismiss();
-            // Set the cancellation state
-            //downloadApkThread.cancelBuildUpdate();
-        }
-    };
-
-    private OnClickListener errorDialogOnClick = new OnClickListener() {
-        @Override
-        public void onClick(DialogInterface dialog, int which) {
-            dialog.dismiss();
         }
     };
 
@@ -298,7 +284,6 @@ public class UpdateManager {
         // Start the application download on a new thread
         downloadApkThread = new DownloadApkThread(mContext, mHandler, mProgress, mDownloadDialog, checkUpdateThread.getMHashMap(), options);
         this.cordova.getThreadPool().execute(downloadApkThread);
-        // new Thread(downloadApkThread).start();
     }
 
 }

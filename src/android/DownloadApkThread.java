@@ -23,6 +23,7 @@ public class DownloadApkThread implements Runnable {
     private static final String TAG = "DownloadApkThread";
     private static final int CONNECT_TIMEOUT_MS = 10000;
     private static final int READ_TIMEOUT_MS = 30000;
+    private static final long OLD_DOWNLOAD_AGE_MS = 24L * 60L * 60L * 1000L;
 
     /* Parsed XML data */
     HashMap<String, String> mHashMap;
@@ -30,17 +31,14 @@ public class DownloadApkThread implements Runnable {
     private String mSavePath;
     /* Download progress */
     private int progress;
-    /* Whether the update has been canceled */
-    private boolean cancelUpdate = false;
-    private AlertDialog mDownloadDialog;
     private DownloadHandler downloadHandler;
     private Handler mHandler;
     private AuthenticationOptions authentication;
     private long uniqueVersionId;
     private Context mContext;
+    private File apkFile;
 
     public DownloadApkThread(Context mContext, Handler mHandler, ProgressBar mProgress, AlertDialog mDownloadDialog, HashMap<String, String> mHashMap, JSONObject options) {
-        this.mDownloadDialog = mDownloadDialog;
         this.mHashMap = mHashMap;
         this.mHandler = mHandler;
         this.mContext = mContext;
@@ -52,7 +50,7 @@ public class DownloadApkThread implements Runnable {
         }
         this.mSavePath = new File(downloadDirectory, "appupdate").getAbsolutePath();
         this.uniqueVersionId = System.currentTimeMillis();
-        File apkFile = new File(this.mSavePath, "update-" + this.uniqueVersionId + ".apk");
+        this.apkFile = new File(this.mSavePath, "update-" + this.uniqueVersionId + ".apk");
         this.downloadHandler = new DownloadHandler(mContext, mProgress, mDownloadDialog, apkFile);
     }
 
@@ -60,12 +58,6 @@ public class DownloadApkThread implements Runnable {
     @Override
     public void run() {
         downloadAndInstall();
-        // Dismiss the download dialog
-        // mDownloadDialog.dismiss();
-    }
-
-    public void cancelBuildUpdate() {
-        this.cancelUpdate = true;
     }
 
     private void downloadAndInstall() {
@@ -78,7 +70,6 @@ public class DownloadApkThread implements Runnable {
                 throw new IOException("Failed to create directory: " + mSavePath);
             }
             deleteOldDownloads(file);
-            File apkFile = new File(mSavePath, "update-" + this.uniqueVersionId + ".apk");
             temporaryFile = new File(apkFile.getAbsolutePath() + ".part");
 
             URL url = new URL(mHashMap.get("url"));
@@ -86,13 +77,16 @@ public class DownloadApkThread implements Runnable {
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
             conn.setReadTimeout(READ_TIMEOUT_MS);
-            conn.setInstanceFollowRedirects(true);
+            conn.setInstanceFollowRedirects(!authentication.hasCredentials());
 
             if(this.authentication.hasCredentials()){
                 conn.setRequestProperty("Authorization", this.authentication.getEncodedAuthorization());
             }
 
             int status = conn.getResponseCode();
+            if (!"https".equalsIgnoreCase(conn.getURL().getProtocol())) {
+                throw new IOException("APK redirect URL must use HTTPS");
+            }
             if (status < HttpURLConnection.HTTP_OK || status >= HttpURLConnection.HTTP_MULT_CHOICE) {
                 throw new IOException("Unexpected HTTP status " + status);
             }
@@ -105,7 +99,7 @@ public class DownloadApkThread implements Runnable {
 
             try (InputStream is = conn.getInputStream(); FileOutputStream fos = new FileOutputStream(temporaryFile)) {
                 // Write to the file
-                while (!cancelUpdate) {
+                while (true) {
                     int numread = is.read(buf);
                     if (numread == -1) {
                         break;
@@ -122,9 +116,6 @@ public class DownloadApkThread implements Runnable {
                 fos.flush();
             }
 
-            if (cancelUpdate) {
-                throw new IOException("Download canceled");
-            }
             if (length >= 0 && count != length) {
                 throw new IOException("Incomplete download: expected " + length + " bytes but received " + count);
             }
@@ -162,8 +153,10 @@ public class DownloadApkThread implements Runnable {
         if (files == null) {
             return;
         }
+        long expirationTime = System.currentTimeMillis() - OLD_DOWNLOAD_AGE_MS;
         for (File file : files) {
             if ((file.getName().endsWith(".apk") || file.getName().endsWith(".part"))
+                    && file.lastModified() < expirationTime
                     && !file.delete()) {
                 LOG.w(TAG, "Unable to delete old download: " + file);
             }
