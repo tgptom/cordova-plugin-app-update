@@ -16,6 +16,7 @@ import org.json.JSONException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Created by LuoWen on 2015/10/27.
@@ -23,6 +24,10 @@ import java.util.Map;
  * Thanks @coolszy
  */
 public class UpdateManager {
+    public interface InstallPermissionRequester {
+        void runWithInstallPermission(Runnable action);
+    }
+
     public static final String TAG = "UpdateManager";
 
     /*
@@ -41,14 +46,17 @@ public class UpdateManager {
     private String packageName;
     private Context mContext;
     private MsgBox msgBox;
-    private Boolean isDownloading = false;
+    private final AtomicBoolean isChecking = new AtomicBoolean(false);
+    private final AtomicBoolean isDownloading = new AtomicBoolean(false);
     private List<Version> queue = new ArrayList<Version>(1);
     private CheckUpdateThread checkUpdateThread;
     private DownloadApkThread downloadApkThread;
+    private InstallPermissionRequester installPermissionRequester;
 
-    public UpdateManager(Context context, CordovaInterface cordova) {
+    public UpdateManager(Context context, CordovaInterface cordova, InstallPermissionRequester installPermissionRequester) {
         this.cordova = cordova;
         this.mContext = context;
+        this.installPermissionRequester = installPermissionRequester;
         packageName = mContext.getPackageName();
         msgBox = new MsgBox(mContext);
     }
@@ -63,6 +71,12 @@ public class UpdateManager {
         this.updateXmlUrl = updateUrl;
         this.options = options;
         this.mContext = context;
+        this.installPermissionRequester = new InstallPermissionRequester() {
+            @Override
+            public void runWithInstallPermission(Runnable action) {
+                action.run();
+            }
+        };
         packageName = mContext.getPackageName();
         msgBox = new MsgBox(mContext);
     }
@@ -83,18 +97,21 @@ public class UpdateManager {
 
             switch (msg.what) {
                 case Constants.NETWORK_ERROR:
+                    isChecking.set(false);
+                    isDownloading.set(false);
                     // Temporarily hide the error
                     //msgBox.showErrorDialog(errorDialogOnClick);
                     callbackContext.error(Utils.makeJSON(Constants.NETWORK_ERROR, "network error"));
                     break;
                 case Constants.VERSION_COMPARE_START:
+                    isChecking.set(false);
                     compareVersions();
                     break;
                 case Constants.DOWNLOAD_CLICK_START:
                     emitNoticeDialogOnClick();
                     break;
                 case Constants.DOWNLOAD_FINISH:
-                    isDownloading = false;
+                    isDownloading.set(false);
                     break;
                 case Constants.VERSION_UPDATING:
                     callbackContext.success(Utils.makeJSON(Constants.VERSION_UPDATING, "success, version updating."));
@@ -106,12 +123,15 @@ public class UpdateManager {
                     callbackContext.success(Utils.makeJSON(Constants.VERSION_UP_TO_UPDATE, "success, up to date."));
                     break;
                 case Constants.VERSION_COMPARE_FAIL:
+                    isChecking.set(false);
                     callbackContext.error(Utils.makeJSON(Constants.VERSION_COMPARE_FAIL, "version compare fail"));
                     break;
                 case Constants.VERSION_RESOLVE_FAIL:
+                    isChecking.set(false);
                     callbackContext.error(Utils.makeJSON(Constants.VERSION_RESOLVE_FAIL, "version resolve fail"));
                     break;
                 case Constants.REMOTE_FILE_NOT_FOUND:
+                    isChecking.set(false);
                     callbackContext.error(Utils.makeJSON(Constants.REMOTE_FILE_NOT_FOUND, "remote file not found"));
                     break;
                 default:
@@ -124,12 +144,17 @@ public class UpdateManager {
     /**
      * Check for application updates
      */
-    public void checkUpdate() {
+    public boolean checkUpdate() {
+        if (!isChecking.compareAndSet(false, true)) {
+            callbackContext.error(Utils.makeJSON(Constants.VERSION_UPDATING, "an update check is already in progress"));
+            return false;
+        }
         LOG.d(TAG, "checkUpdate..");
 
         checkUpdateThread = new CheckUpdateThread(mContext, mHandler, queue, packageName, updateXmlUrl, options);
         this.cordova.getThreadPool().execute(checkUpdateThread);
         //new Thread(checkUpdateThread).start();
+        return true;
     }
 
     /**
@@ -138,6 +163,7 @@ public class UpdateManager {
     public void permissionDenied(String errMsg) {
         LOG.d(TAG, "permissionsDenied..");
 
+        isDownloading.set(false);
         callbackContext.error(Utils.makeJSON(Constants.PERMISSION_DENIED, errMsg));
     }
 
@@ -146,8 +172,8 @@ public class UpdateManager {
      */
     private void compareVersions() {
         Version version = queue.get(0);
-        int versionCodeLocal = version.getLocal();
-        int versionCodeRemote = version.getRemote();
+        long versionCodeLocal = version.getLocal();
+        long versionCodeRemote = version.getRemote();
 
         boolean skipPromptDialog = false;
         try {
@@ -162,7 +188,7 @@ public class UpdateManager {
         // Compare version codes
         // Check whether a newer application version is available
         if (versionCodeLocal < versionCodeRemote) {
-            if (isDownloading) {
+            if (isDownloading.get()) {
                 msgBox.showDownloadDialog(null, null, null, !skipProgressDialog);
                 mHandler.sendEmptyMessage(Constants.VERSION_UPDATING);
             } else {
@@ -191,7 +217,19 @@ public class UpdateManager {
     };
 
     private void emitNoticeDialogOnClick() {
-        isDownloading = true;
+        installPermissionRequester.runWithInstallPermission(new Runnable() {
+            @Override
+            public void run() {
+                startDownload();
+            }
+        });
+    }
+
+    private void startDownload() {
+        if (!isDownloading.compareAndSet(false, true)) {
+            mHandler.sendEmptyMessage(Constants.VERSION_UPDATING);
+            return;
+        }
 
         boolean skipProgressDialog = false;
         try {

@@ -16,7 +16,6 @@ import android.view.View.OnClickListener;
 import android.widget.ProgressBar;
 import androidx.core.content.FileProvider;
 import java.io.File;
-import java.util.HashMap;
 
 import org.apache.cordova.LOG;
 
@@ -31,22 +30,16 @@ public class DownloadHandler extends Handler {
     private ProgressBar mProgress;
     /* Download progress */
     private int progress;
-    /* Download destination */
-    private String mSavePath;
-    /* Parsed XML data */
-    private HashMap<String, String> mHashMap;
+    private File apkFile;
     private MsgHelper msgHelper;
     private AlertDialog mDownloadDialog;
-    private long uniqueVersionId;
 
-    public DownloadHandler(Context mContext, ProgressBar mProgress, AlertDialog mDownloadDialog, String mSavePath, HashMap<String, String> mHashMap, long uniqueVersionId) {
+    public DownloadHandler(Context mContext, ProgressBar mProgress, AlertDialog mDownloadDialog, File apkFile) {
         this.msgHelper = new MsgHelper(mContext.getPackageName(), mContext.getResources());
         this.mDownloadDialog = mDownloadDialog;
         this.mContext = mContext;
         this.mProgress = mProgress;
-        this.mSavePath = mSavePath;
-        this.mHashMap = mHashMap;
-        this.uniqueVersionId = uniqueVersionId;
+        this.apkFile = apkFile;
     }
 
     public void handleMessage(Message msg) {
@@ -94,9 +87,8 @@ public class DownloadHandler extends Handler {
     private void installApk() {
         LOG.d(TAG, "Installing APK");
 
-        File apkFile = new File(mSavePath, mHashMap.get("name")+this.uniqueVersionId+".apk");
         if (!apkFile.exists()) {
-            LOG.e(TAG, "Could not find APK: " + mHashMap.get("name")+this.uniqueVersionId);
+            LOG.e(TAG, "Could not find APK: " + apkFile);
             return;
         }
 

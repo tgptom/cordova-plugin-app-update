@@ -4,19 +4,19 @@ package com.vaenow.appupdate.android;
  * Created by LuoWen on 2015/12/14.
  */
 public class Version {
-    private int local;
-    private int remote;
+    private long local;
+    private long remote;
 
-    public Version(int local, int remote) {
+    public Version(long local, long remote) {
         this.local = local;
         this.remote = remote;
     }
 
-    public int getLocal() {
+    public long getLocal() {
         return local;
     }
 
-    public int getRemote() {
+    public long getRemote() {
         return remote;
     }
 }

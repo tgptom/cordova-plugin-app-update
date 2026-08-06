@@ -1,28 +1,28 @@
 package com.vaenow.appupdate.android;
 
-import android.AuthenticationOptions;
 import android.content.Context;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.os.Build;
 import android.os.Handler;
-import android.util.Base64;
 import org.apache.cordova.LOG;
 import org.json.JSONObject;
-import org.json.JSONException;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
-
-import 	java.nio.charset.StandardCharsets;
 
 /**
  * Created by LuoWen on 2015/12/14.
  */
 public class CheckUpdateThread implements Runnable {
+    private static final int CONNECT_TIMEOUT_MS = 10000;
+    private static final int READ_TIMEOUT_MS = 30000;
     private String TAG = "CheckUpdateThread";
 
     /* Parsed XML data */
@@ -53,16 +53,22 @@ public class CheckUpdateThread implements Runnable {
 
     @Override
     public void run() {
-        int versionCodeLocal = getVersionCodeLocal(mContext); // Get the installed application version
-        int versionCodeRemote = getVersionCodeRemote();  // Get the server application version
+        try {
+            long versionCodeLocal = getVersionCodeLocal(mContext);
+            long versionCodeRemote = getVersionCodeRemote();
 
-        queue.clear(); //ensure the queue is empty
-        queue.add(new Version(versionCodeLocal, versionCodeRemote));
-
-        if (versionCodeLocal == 0 || versionCodeRemote == 0) {
-            mHandler.sendEmptyMessage(Constants.VERSION_RESOLVE_FAIL);
-        } else {
+            queue.clear();
+            queue.add(new Version(versionCodeLocal, versionCodeRemote));
             mHandler.sendEmptyMessage(Constants.VERSION_COMPARE_START);
+        } catch (FileNotFoundException e) {
+            LOG.e(TAG, "Update metadata was not found", e);
+            mHandler.sendEmptyMessage(Constants.REMOTE_FILE_NOT_FOUND);
+        } catch (IOException e) {
+            LOG.e(TAG, "Unable to retrieve update metadata", e);
+            mHandler.sendEmptyMessage(Constants.NETWORK_ERROR);
+        } catch (Exception e) {
+            LOG.e(TAG, "Unable to parse update metadata", e);
+            mHandler.sendEmptyMessage(Constants.VERSION_RESOLVE_FAIL);
         }
     }
 
@@ -72,32 +78,30 @@ public class CheckUpdateThread implements Runnable {
      * @param path
      * @return
      */
-    private InputStream returnFileIS(String path) {
+    private InputStream returnFileIS(String path) throws IOException {
         LOG.d(TAG, "returnFileIS..");
 
-        URL url = null;
-        InputStream is = null;
+        URL url = new URL(path);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        conn.setReadTimeout(READ_TIMEOUT_MS);
+        conn.setInstanceFollowRedirects(true);
 
-        try {
-            url = new URL(path);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();// Use HttpURLConnection to retrieve remote data
-
-            if(this.authentication.hasCredentials()){
-                conn.setRequestProperty("Authorization", this.authentication.getEncodedAuthorization());
-            }
-
-            conn.setDoInput(true);
-            conn.connect();
-            is = conn.getInputStream(); // Get the response input stream
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            mHandler.sendEmptyMessage(Constants.REMOTE_FILE_NOT_FOUND);
-        } catch (IOException e) {
-            e.printStackTrace();
-            mHandler.sendEmptyMessage(Constants.NETWORK_ERROR);
+        if(this.authentication.hasCredentials()){
+            conn.setRequestProperty("Authorization", this.authentication.getEncodedAuthorization());
         }
 
-        return is;
+        conn.setDoInput(true);
+        int status = conn.getResponseCode();
+        if (status == HttpURLConnection.HTTP_NOT_FOUND) {
+            conn.disconnect();
+            throw new FileNotFoundException(path);
+        }
+        if (status < HttpURLConnection.HTTP_OK || status >= HttpURLConnection.HTTP_MULT_CHOICE) {
+            conn.disconnect();
+            throw new IOException("Unexpected HTTP status " + status);
+        }
+        return new DisconnectingInputStream(conn);
     }
 
     /**
@@ -115,17 +119,14 @@ public class CheckUpdateThread implements Runnable {
      * @param context
      * @return
      */
-    private int getVersionCodeLocal(Context context) {
+    private long getVersionCodeLocal(Context context) throws NameNotFoundException {
         LOG.d(TAG, "getVersionCode..");
 
-        int versionCode = 0;
-        try {
-            // Get the application version code from android:versionCode in AndroidManifest.xml
-            versionCode = context.getPackageManager().getPackageInfo(packageName, 0).versionCode;
-        } catch (NameNotFoundException e) {
-            e.printStackTrace();
+        PackageInfo packageInfo = context.getPackageManager().getPackageInfo(packageName, 0);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            return packageInfo.getLongVersionCode();
         }
-        return versionCode;
+        return packageInfo.versionCode;
     }
 
     /**
@@ -133,21 +134,52 @@ public class CheckUpdateThread implements Runnable {
      *
      * @return
      */
-    private int getVersionCodeRemote() {
-        int versionCodeRemote = 0;
-
-        InputStream is = returnFileIS(updateXmlUrl);
-        // Parse the small XML file using DOM
-        ParseXmlService service = new ParseXmlService();
-        try {
+    private long getVersionCodeRemote() throws Exception {
+        HashMap<String, String> updateData;
+        try (InputStream is = returnFileIS(updateXmlUrl)) {
+            ParseXmlService service = new ParseXmlService();
             setMHashMap(service.parseXml(is));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        if (null != getMHashMap()) {
-            versionCodeRemote = Integer.valueOf(getMHashMap().get("version"));
+            updateData = getMHashMap();
         }
 
-        return versionCodeRemote;
+        if (updateData == null || !updateData.containsKey("version")
+                || !updateData.containsKey("name") || !updateData.containsKey("url")) {
+            throw new IllegalArgumentException("Update metadata must contain version, name, and url");
+        }
+
+        long versionCode = Long.parseLong(updateData.get("version"));
+        if (versionCode <= 0) {
+            throw new IllegalArgumentException("Version code must be positive");
+        }
+
+        URL apkUrl;
+        try {
+            apkUrl = new URL(updateData.get("url"));
+        } catch (MalformedURLException e) {
+            throw new IllegalArgumentException("Invalid APK URL", e);
+        }
+        if (!"https".equalsIgnoreCase(apkUrl.getProtocol())
+                && !"http".equalsIgnoreCase(apkUrl.getProtocol())) {
+            throw new IllegalArgumentException("APK URL must use HTTP or HTTPS");
+        }
+        return versionCode;
+    }
+
+    private static class DisconnectingInputStream extends java.io.FilterInputStream {
+        private final HttpURLConnection connection;
+
+        DisconnectingInputStream(HttpURLConnection connection) throws IOException {
+            super(connection.getInputStream());
+            this.connection = connection;
+        }
+
+        @Override
+        public void close() throws IOException {
+            try {
+                super.close();
+            } finally {
+                connection.disconnect();
+            }
+        }
     }
 }

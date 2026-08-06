@@ -42,11 +42,9 @@
         <source-file src="src/android/DownloadApkThread.java" target-dir="src/com/vaenow/appupdate/android"/>
         <source-file src="src/android/DownloadHandler.java" target-dir="src/com/vaenow/appupdate/android"/>
         <source-file src="src/android/GenericFileProvider.java" target-dir="src/com/vaenow/appupdate/android"/>
-        <source-file src="src/android/GetRemoteXmlThread.java" target-dir="src/com/vaenow/appupdate/android"/>
         <source-file src="src/android/MsgBox.java" target-dir="src/com/vaenow/appupdate/android"/>
         <source-file src="src/android/MsgHelper.java" target-dir="src/com/vaenow/appupdate/android"/>
         <source-file src="src/android/ParseXmlService.java" target-dir="src/com/vaenow/appupdate/android"/>
-        <source-file src="src/android/UIValues.java" target-dir="src/com/vaenow/appupdate/android"/>
         <source-file src="src/android/UpdateManager.java" target-dir="src/com/vaenow/appupdate/android"/>
         <source-file src="src/android/Utils.java" target-dir="src/com/vaenow/appupdate/android"/>
         <source-file src="src/android/Version.java" target-dir="src/com/vaenow/appupdate/android"/>
@@ -66,7 +64,7 @@
         <source-file src="res/layout/appupdate_progress.xml" target-dir="res/layout"/>
         <source-file src="res/xml/appupdate_paths.xml" target-dir="res/xml" />
    
-        <preference name="ANDROIDX_CORE_VERSION" default="1.6.+"/>     
+        <preference name="ANDROIDX_CORE_VERSION" default="1.16.0"/>
         <!--<framework src="com.android.support:support-v4:24.1.1+" />-->
         <framework src="androidx.core:core:$ANDROIDX_CORE_VERSION" />
     </platform>
