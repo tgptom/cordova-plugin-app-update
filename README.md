@@ -1,6 +1,3 @@
-
-[![NPM](https://nodei.co/npm/cordova-plugin-app-update.png?downloads=true&downloadRank=true)](https://nodei.co/npm/cordova-plugin-app-update/)
-
 # cordova-plugin-app-update
 App updater for Cordova/PhoneGap
 
@@ -112,13 +109,7 @@ versionName | versionCode
 `zh` `en` `de` `fr` `pt` `bn` `pl` `it` `es` `ru` `ko`
 
 # Platforms
-Android only
+Android
 
 # License
 MIT
-
-# :snowflake: :beers:
-
-* Please let me know if you have any questions.
-
-
