@@ -109,17 +109,7 @@ versionName | versionCode
     int UNKNOWN_ERROR = 901;
 ```
 # Languages
-* 🇨🇳 zh
-* 🇺🇸 en 
-* 🇩🇪 de 
-* 🇫🇷 fr 
-* 🇵🇹 pt 
-* 🇧🇩 bn 
-* 🇵🇱 pl 
-* 🇮🇹 it 
-* 🇪🇸 es
-* 🇷🇺 ru
-* 🇰🇷 ko
+`zh` `en` `de` `fr` `pt` `bn` `pl` `it` `es` `ru` `ko`
 
 # Platforms
 Android only
