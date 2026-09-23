@@ -88,7 +88,11 @@ public class UpdateManager {
                     isChecking.set(false);
                     isDownloading.set(false);
                     operationInProgress.set(false);
-                    callbackContext.error(Utils.makeJSON(Constants.NETWORK_ERROR, "network error"));
+                    if (msg.obj instanceof JSONObject) {
+                        callbackContext.error((JSONObject) msg.obj);
+                    } else {
+                        callbackContext.error(Utils.makeJSON(Constants.NETWORK_ERROR, "network error"));
+                    }
                     break;
                 case Constants.VERSION_COMPARE_START:
                     isChecking.set(false);
