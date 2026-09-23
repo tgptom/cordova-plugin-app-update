@@ -14,8 +14,15 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.cert.CertPathValidatorException;
+import java.security.cert.CertificateException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+
+import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.SSLPeerUnverifiedException;
 
 /**
  * Created by LuoWen on 2015/12/14.
@@ -64,8 +71,13 @@ public class CheckUpdateThread implements Runnable {
             LOG.e(TAG, "Update metadata was not found", e);
             mHandler.sendEmptyMessage(Constants.REMOTE_FILE_NOT_FOUND);
         } catch (IOException e) {
-            LOG.e(TAG, "Unable to retrieve update metadata", e);
-            mHandler.sendEmptyMessage(Constants.NETWORK_ERROR);
+            if (isTlsCertificateFailure(e)) {
+                LOG.e(TAG, "TLS certificate validation failed while retrieving update metadata", e);
+                mHandler.obtainMessage(Constants.NETWORK_ERROR, makeTlsNetworkError()).sendToTarget();
+            } else {
+                LOG.e(TAG, "Unable to retrieve update metadata", e);
+                mHandler.sendEmptyMessage(Constants.NETWORK_ERROR);
+            }
         } catch (Exception e) {
             LOG.e(TAG, "Unable to parse update metadata", e);
             mHandler.sendEmptyMessage(Constants.VERSION_RESOLVE_FAIL);
@@ -82,26 +94,68 @@ public class CheckUpdateThread implements Runnable {
         LOG.d(TAG, "returnFileIS..");
 
         URL url = new URL(path);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
-        conn.setReadTimeout(READ_TIMEOUT_MS);
-        conn.setInstanceFollowRedirects(!authentication.hasCredentials());
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            conn.setReadTimeout(READ_TIMEOUT_MS);
+            conn.setInstanceFollowRedirects(!authentication.hasCredentials());
 
-        if(this.authentication.hasCredentials()){
-            conn.setRequestProperty("Authorization", this.authentication.getEncodedAuthorization());
-        }
+            if (this.authentication.hasCredentials()) {
+                conn.setRequestProperty("Authorization", this.authentication.getEncodedAuthorization());
+            }
 
-        conn.setDoInput(true);
-        int status = conn.getResponseCode();
-        if (status == HttpURLConnection.HTTP_NOT_FOUND) {
-            conn.disconnect();
-            throw new FileNotFoundException(path);
+            conn.setDoInput(true);
+            int status = conn.getResponseCode();
+            if (status == HttpURLConnection.HTTP_NOT_FOUND) {
+                throw new FileNotFoundException(path);
+            }
+            if (status < HttpURLConnection.HTTP_OK || status >= HttpURLConnection.HTTP_MULT_CHOICE) {
+                throw new IOException("Unexpected HTTP status " + status);
+            }
+            return new DisconnectingInputStream(conn);
+        } catch (IOException e) {
+            if (conn != null) {
+                conn.disconnect();
+            }
+            throw e;
+        } catch (RuntimeException e) {
+            if (conn != null) {
+                conn.disconnect();
+            }
+            throw e;
         }
-        if (status < HttpURLConnection.HTTP_OK || status >= HttpURLConnection.HTTP_MULT_CHOICE) {
-            conn.disconnect();
-            throw new IOException("Unexpected HTTP status " + status);
+    }
+
+    private boolean isTlsCertificateFailure(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof SSLHandshakeException
+                    || current instanceof SSLPeerUnverifiedException
+                    || current instanceof CertPathValidatorException
+                    || current instanceof CertificateException) {
+                return true;
+            }
+            if (current instanceof SSLException && current.getMessage() != null) {
+                String lowerMessage = current.getMessage().toLowerCase(Locale.US);
+                if (lowerMessage.contains("trust anchor")
+                        || lowerMessage.contains("certificate")
+                        || lowerMessage.contains("certpath")) {
+                    return true;
+                }
+            }
+            current = current.getCause();
         }
-        return new DisconnectingInputStream(conn);
+        return false;
+    }
+
+    private JSONObject makeTlsNetworkError() {
+        JSONObject error = Utils.makeJSON(Constants.NETWORK_ERROR, "tls certificate validation failed");
+        try {
+            error.put("type", "tls_certificate_error");
+        } catch (Exception ignored) {
+        }
+        return error;
     }
 
     /**
