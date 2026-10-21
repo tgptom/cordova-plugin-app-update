@@ -29,8 +29,6 @@ public class DownloadApkThread implements Runnable {
     HashMap<String, String> mHashMap;
     /* Download destination */
     private String mSavePath;
-    /* Download progress */
-    private int progress;
     private DownloadHandler downloadHandler;
     private Handler mHandler;
     private AuthenticationOptions authentication;
@@ -87,8 +85,19 @@ public class DownloadApkThread implements Runnable {
             if (status < HttpURLConnection.HTTP_OK || status >= HttpURLConnection.HTTP_MULT_CHOICE) {
                 throw new IOException("Unexpected HTTP status " + status);
             }
-            // Get the file size
+            // Get the file size (-1 when unknown, e.g. chunked or transparently decompressed responses)
             long length = conn.getContentLengthLong();
+            // Only non-sensitive response metadata is logged; never the URL or credentials
+            LOG.d(TAG, "APK response: status=" + status
+                    + ", length=" + length
+                    + ", Content-Length=" + conn.getHeaderField("Content-Length")
+                    + ", Content-Encoding=" + conn.getHeaderField("Content-Encoding")
+                    + ", Transfer-Encoding=" + conn.getHeaderField("Transfer-Encoding"));
+
+            DownloadProgress tracker = new DownloadProgress(length);
+            downloadHandler.sendProgress(tracker.start());
+            long startTime = System.currentTimeMillis();
+            int nextLoggedPercent = 25;
 
             long count = 0;
             // Read buffer
@@ -102,16 +111,23 @@ public class DownloadApkThread implements Runnable {
                         break;
                     }
                     count += numread;
-                    // Calculate download progress
-                    progress = (length > 0) ? (int) Math.min(100, (count * 100) / length) : 0;
-                    downloadHandler.updateProgress(progress);
-                    // Update progress
-                    downloadHandler.sendEmptyMessage(Constants.DOWNLOAD);
+                    // Calculate download progress; only changed values are sent to the UI
+                    int progress = tracker.onBytesRead(count);
+                    if (progress != DownloadProgress.NO_CHANGE) {
+                        downloadHandler.sendProgress(progress);
+                        if (progress >= nextLoggedPercent) {
+                            LOG.d(TAG, "APK download progress: " + progress + "% (" + count + "/" + length + " bytes)");
+                            nextLoggedPercent = (progress / 25 + 1) * 25;
+                        }
+                    }
                     // Write to the file
                     fos.write(buf, 0, numread);
                 }
                 fos.flush();
             }
+            LOG.d(TAG, "APK download complete: bytes=" + count + ", length=" + length
+                    + ", elapsedMs=" + (System.currentTimeMillis() - startTime)
+                    + ", progressUpdates=" + tracker.getPublishedCount());
 
             if (length >= 0 && count != length) {
                 throw new IOException("Incomplete download: expected " + length + " bytes but received " + count);
@@ -122,10 +138,15 @@ public class DownloadApkThread implements Runnable {
             }
 
             temporaryFile = null;
+            int finalProgress = tracker.complete();
+            if (finalProgress != DownloadProgress.NO_CHANGE) {
+                downloadHandler.sendProgress(finalProgress);
+            }
             downloadHandler.sendEmptyMessage(Constants.DOWNLOAD_FINISH);
             mHandler.sendEmptyMessage(Constants.DOWNLOAD_FINISH);
         } catch (IOException e) {
             LOG.e(TAG, "APK download failed", e);
+            downloadHandler.sendEmptyMessage(Constants.DOWNLOAD_FAILED);
             mHandler.sendEmptyMessage(Constants.NETWORK_ERROR);
         } finally {
             if (temporaryFile != null && temporaryFile.exists() && !temporaryFile.delete()) {

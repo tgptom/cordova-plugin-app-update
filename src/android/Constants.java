@@ -10,6 +10,8 @@ public interface Constants {
     int DOWNLOAD_FINISH = 2;
     /* Download button clicked */
     int DOWNLOAD_CLICK_START = 3;
+    /* Download failed */
+    int DOWNLOAD_FAILED = 4;
 
     /**
      * Version comparison
