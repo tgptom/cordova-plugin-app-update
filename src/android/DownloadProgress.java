@@ -5,7 +5,7 @@ package com.vaenow.appupdate.android;
  * <p/>
  * Values are either a percentage in the range 0..100 for a known positive
  * response length, or {@link #INDETERMINATE} when the total size is unknown.
- * Only changed values are published, so at most 102 progress messages are
+ * Only changed values are published, so at most 101 progress messages are
  * sent per download regardless of the number of reads.
  */
 public final class DownloadProgress {
