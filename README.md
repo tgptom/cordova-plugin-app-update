@@ -95,6 +95,12 @@ versionName | versionCode
 - APK installation should **fail closed** (keep certificate validation enabled; do not bypass TLS trust or hostname checks).
 - TLS/certificate validation failures in update metadata checks still return `code: 405` for backward compatibility, and now include `type: "tls_certificate_error"` so callers can distinguish certificate trust/chain problems from ordinary network failures.
 - If you receive `type: "tls_certificate_error"`, fix the server certificate chain (serve full valid intermediate chain, use a CA/root trusted on supported Android versions, and ensure certificates are not expired).
+- Update XML must not contain a DOCTYPE/DTD or unresolved entities. Predefined XML entities (such as `&amp;`), numeric character references, and CDATA are supported.
+
+### Parser regression tests
+
+With JDK 17+ and Maven installed, run `mvn -f tests/android/pom.xml test`.
+These tests use Android 9's framework XML parser directly, without an emulator or desktop parser substitute.
 
 ### `checkAppUpdate` code
 
