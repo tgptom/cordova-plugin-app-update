@@ -97,10 +97,31 @@ versionName | versionCode
 - If you receive `type: "tls_certificate_error"`, fix the server certificate chain (serve full valid intermediate chain, use a CA/root trusted on supported Android versions, and ensure certificates are not expired).
 - Update XML must not contain a DOCTYPE/DTD or unresolved entities. Predefined XML entities (such as `&amp;`), numeric character references, and CDATA are supported.
 
-### Parser regression tests
+### Regression tests
 
 With JDK 17+ and Maven installed, run `mvn -f tests/android/pom.xml test`.
-These tests use Android 9's framework XML parser directly, without an emulator or desktop parser substitute.
+The parser tests use Android 9's framework XML parser directly, without an emulator or desktop parser substitute.
+The download progress tests cover only the percentage calculation and update throttling (`DownloadProgress`);
+the progress dialog itself must be checked on a device or emulator.
+
+### Download progress
+
+- When the APK response has a positive length, the progress dialog shows a 0–100% bar.
+- When the length is unknown (for example a chunked response, or a compressed response that Android
+  decompresses transparently), the bar is shown as an animated indeterminate bar instead of a static 0%.
+- The progress bar is updated on the UI thread, only when the displayed value changes.
+
+To diagnose progress problems, enable debug logging in the app's `config.xml`
+(`<preference name="loglevel" value="DEBUG" />`) and capture Logcat during one download:
+
+```
+adb logcat -s DownloadApkThread:D DownloadHandler:D UpdateManager:D
+```
+
+The `APK response` line shows the HTTP status, the length Android reports (`-1` means unknown), and the
+`Content-Length`, `Content-Encoding` and `Transfer-Encoding` headers. Progress is logged every 25% and the
+`APK download complete` line shows the byte count, elapsed time and number of UI progress updates. URLs and
+credentials are not logged.
 
 ### `checkAppUpdate` code
 

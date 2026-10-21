@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.os.Handler;
+import android.os.Looper;
 import android.widget.ProgressBar;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
@@ -78,7 +79,8 @@ public class UpdateManager {
         }
     }
 
-    private Handler mHandler = new Handler() {
+    // Bound to the UI thread: this handler shows dialogs, and Cordova may call execute() on a non-UI thread
+    private Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(android.os.Message msg) {
             super.handleMessage(msg);
@@ -241,9 +243,12 @@ public class UpdateManager {
                 downloadDialogOnClickPos,
                 downloadDialogOnClickNeu,
                 !skipProgressDialog);
+        ProgressBar progressBar = (ProgressBar) ret.get("progress");
+        // Reset any state left by a previous download; the size is unknown until the response arrives
+        DownloadHandler.applyProgress(progressBar, DownloadProgress.INDETERMINATE);
 
         // Download the file
-        downloadApk((AlertDialog) ret.get("dialog"), (ProgressBar) ret.get("progress"));
+        downloadApk((AlertDialog) ret.get("dialog"), progressBar);
     }
 
     /**

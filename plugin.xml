@@ -41,6 +41,7 @@
         <source-file src="src/android/Constants.java" target-dir="src/com/vaenow/appupdate/android"/>
         <source-file src="src/android/DownloadApkThread.java" target-dir="src/com/vaenow/appupdate/android"/>
         <source-file src="src/android/DownloadHandler.java" target-dir="src/com/vaenow/appupdate/android"/>
+        <source-file src="src/android/DownloadProgress.java" target-dir="src/com/vaenow/appupdate/android"/>
         <source-file src="src/android/GenericFileProvider.java" target-dir="src/com/vaenow/appupdate/android"/>
         <source-file src="src/android/MsgBox.java" target-dir="src/com/vaenow/appupdate/android"/>
         <source-file src="src/android/MsgHelper.java" target-dir="src/com/vaenow/appupdate/android"/>
