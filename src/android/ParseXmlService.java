@@ -1,12 +1,10 @@
 package com.vaenow.appupdate.android;
 
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import android.util.Xml;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+
 import java.io.InputStream;
 import java.util.HashMap;
 
@@ -17,45 +15,62 @@ public class ParseXmlService {
     public HashMap<String, String> parseXml(InputStream inStream) throws Exception {
         HashMap<String, String> hashMap = new HashMap<String, String>();
 
-        // Create a document builder factory
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
-        factory.setXIncludeAware(false);
-        factory.setExpandEntityReferences(false);
-        // Get a document builder from the factory
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        // Parse the input stream into a document
-        Document document = builder.parse(inStream);
-        // Get the XML root element
-        Element root = document.getDocumentElement();
-        // Get all child nodes
-        NodeList childNodes = root.getChildNodes();
-        for (int j = 0; j < childNodes.getLength(); j++) {
-            // Iterate over the child nodes
-            Node childNode = (Node) childNodes.item(j);
-            if (childNode.getNodeType() == Node.ELEMENT_NODE) {
-                Element childElement = (Element) childNode;
-                String value = childElement.getTextContent();
-                if (value == null || value.trim().isEmpty()) {
-                    continue;
+        XmlPullParser parser = Xml.newPullParser();
+        // Android's factory enables DTD processing by default.
+        parser.setFeature(XmlPullParser.FEATURE_PROCESS_DOCDECL, false);
+        if (parser.getFeature(XmlPullParser.FEATURE_PROCESS_DOCDECL)) {
+            throw new XmlPullParserException("DTD processing must be disabled");
+        }
+        parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false);
+        parser.setInput(inStream, null);
+
+        boolean rootSeen = false;
+        String field = null;
+        StringBuilder text = new StringBuilder();
+        int event;
+        // next() hides declarations and unresolved entities; inspect every token instead.
+        while ((event = parser.nextToken()) != XmlPullParser.END_DOCUMENT) {
+            if (event == XmlPullParser.DOCDECL) {
+                throw new XmlPullParserException("DOCTYPE is not allowed");
+            }
+            if (event == XmlPullParser.ENTITY_REF && parser.getText() == null) {
+                throw new XmlPullParserException("Unresolved entity is not allowed");
+            }
+            if (event == XmlPullParser.START_TAG) {
+                if (parser.getDepth() == 1) {
+                    if (rootSeen) {
+                        throw new XmlPullParserException("Multiple root elements");
+                    }
+                    rootSeen = true;
                 }
-                value = value.trim();
-                // Version code
-                if ("version".equals(childElement.getNodeName())) {
-                    hashMap.put("version", value);
+                if (parser.getDepth() == 2) {
+                    String name = parser.getName();
+                    field = "version".equals(name) || "name".equals(name) || "url".equals(name)
+                            ? name : null;
+                    text.setLength(0);
                 }
-                // Application name
-                else if (("name".equals(childElement.getNodeName()))) {
-                    hashMap.put("name", value);
+            } else if (event == XmlPullParser.END_TAG && parser.getDepth() == 2) {
+                if (field != null) {
+                    String value = text.toString().trim();
+                    if (!value.isEmpty()) {
+                        hashMap.put(field, value);
+                    }
                 }
-                // Download URL
-                else if (("url".equals(childElement.getNodeName()))) {
-                    hashMap.put("url", value);
+                field = null;
+            } else if (event == XmlPullParser.TEXT || event == XmlPullParser.CDSECT
+                    || event == XmlPullParser.ENTITY_REF
+                    || event == XmlPullParser.IGNORABLE_WHITESPACE) {
+                if (parser.getDepth() == 0 && (event == XmlPullParser.ENTITY_REF
+                        || event == XmlPullParser.CDSECT || !parser.isWhitespace())) {
+                    throw new XmlPullParserException("Text outside root element");
+                }
+                if (field != null) {
+                    text.append(parser.getText());
                 }
             }
+        }
+        if (!rootSeen || parser.getDepth() != 0) {
+            throw new XmlPullParserException("Incomplete XML document");
         }
         return hashMap;
     }

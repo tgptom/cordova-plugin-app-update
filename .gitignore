@@ -1,4 +1,4 @@
 .idea
 npm-debug.log
 *.iml
-
+tests/android/target/
